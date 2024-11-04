@@ -3,6 +3,34 @@ import React, { useEffect, useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TouchableOpacity } from 'react-native';
 
+
+const enviarDatos = async (status, nombre, idDevice) => {
+    console.log("status", status, "nombre", nombre);
+    
+    try {
+        const response = await fetch("http://54.166.197.213:5000/api/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                status: parseInt(status), // Convertir el status a número
+                name: nombre,
+                id_device: idDevice
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error("Error en la respuesta de la API");
+        }
+
+        const data = await response.json();
+        console.log("Éxito:", data);
+    } catch (error) {
+        console.error("Error al enviar datos:", error);
+    }
+};
+
 const Control = ({ route, navigation }) => {
     const { nombre } = route.params;
 
@@ -65,17 +93,36 @@ const Control = ({ route, navigation }) => {
                 break;
         }
     };
+    
 
-    const manejarBotonPresionado = (status) => {
+    const manejarBotonPresionado = (status) => {        
         const idDevice = btoa(nombre); // Generar el idDevice codificando el nombre en Base64
         enviarDatos(status, nombre, idDevice);
         cambiarLeds(status);
     };
 
 
-    useEffect(()=>{
-        
-    },[])
+    const [ultimoRegistro, setUltimoRegistro] = useState(null);
+
+    const cargarUltimoRegistro = async () => {
+        try {
+            const response = await fetch("http://54.166.197.213:5000/api/read");
+            if (!response.ok) throw new Error("Error al obtener el último registro");
+
+            const records = await response.json();
+            // Ordena los registros por fecha y selecciona el más reciente
+            const registroMasReciente = records
+            .sort((a, b) => new Date(b.date) - new Date(a.date))[0]; // Orden descendente por fecha
+
+            setUltimoRegistro(registroMasReciente);            
+        } catch (error) {
+            console.error("Error al cargar el último registro:", error);
+        }
+    };
+
+    useEffect(() => {
+        cargarUltimoRegistro();
+    }, []);
 
     const regresar =()=> {
         navigation.navigate('Login');
@@ -105,7 +152,7 @@ const Control = ({ route, navigation }) => {
 
                         {/* ARRIBA */}
                         <View>
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} >
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('1')}>
                                 <Image source={require("../assets/flecha-arriba.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
 
@@ -113,15 +160,15 @@ const Control = ({ route, navigation }) => {
 
                         {/* EN MEDIO */}
                         <View style={{display: "flex", flexDirection: "row", justifyContent: "space-evenly", width: "100%"}}>
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('2')}>
                                 <Image source={require("../assets/flecha-izquierda.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('3')}>
                                 <Image source={require("../assets/detener-jugador.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('4')}>
                                 <Image source={require("../assets/flecha-derecha.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
 
@@ -129,18 +176,18 @@ const Control = ({ route, navigation }) => {
 
                         {/* ABAJO */}
                         <View >
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('5')}>
                                 <Image source={require("../assets/flecha-abajo.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
                         </View>
 
 
                         <View style={{display: "flex", flexDirection: "row", justifyContent: "space-between", width: "100%", paddingHorizontal: 20, paddingBottom: 20}}>
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('6')}>
                                 <Image source={require("../assets/giro-completo-izq.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.controlArriba, styles.btns]}>
+                            <TouchableOpacity style={[styles.controlArriba, styles.btns]} onPress={() => manejarBotonPresionado('7')}>
                                 <Image source={require("../assets/giro-completo-der.png")} resizeMode="cover" style={styles.flechitas}></Image>
                             </TouchableOpacity>
                             
@@ -194,49 +241,52 @@ const Control = ({ route, navigation }) => {
                 <View style={styles.contentTable}>
                     <Text style={styles.title}>Último Registro</Text>
 
-                    <View style={styles.containTable}>
-                        <View style={styles.table}>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.titleTable}>ID</Text>
-                            </View>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.dataRow}>Guapa</Text>
-                            </View>
+                    {ultimoRegistro ? (
+                <View style={styles.containTable}>
+                    <View style={styles.table}>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.titleTable}>ID</Text>
                         </View>
-                        <View style={styles.table}>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.titleTable}>ID Device</Text>
-                            </View>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.dataRow}>SmFjcXVlbGluZQ==</Text>
-                            </View>
-                        </View>
-                        <View style={styles.table}>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.titleTable}>IP Cliente</Text>
-                            </View>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.dataRow}>189.203.96.68</Text>
-                            </View>
-                        </View>
-                        <View style={styles.table}>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.titleTable}>Status</Text>
-                            </View>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.dataRow}>1</Text>
-                            </View>
-                        </View>
-                        <View style={styles.table}>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.titleTable}>Fecha</Text>
-                            </View>
-                            <View style={styles.rowTitle}>
-                                <Text style={styles.dataRow}>Sat, 02 Nov 2024 05:34:02 GMT
-                                </Text>
-                            </View>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.dataRow}>{ultimoRegistro.id}</Text>
                         </View>
                     </View>
+                    <View style={styles.table}>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.titleTable}>ID Device</Text>
+                        </View>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.dataRow}>{ultimoRegistro.id_device}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.table}>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.titleTable}>IP Cliente</Text>
+                        </View>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.dataRow}>{ultimoRegistro.ip_client}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.table}>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.titleTable}>Status</Text>
+                        </View>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.dataRow}>{ultimoRegistro.status}</Text>
+                        </View>
+                    </View>
+                    <View style={styles.table}>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.titleTable}>Fecha</Text>
+                        </View>
+                        <View style={styles.rowTitle}>
+                            <Text style={styles.dataRow}>{ultimoRegistro.date}</Text>
+                        </View>
+                    </View>
+                </View>
+            ) : (
+                <Text style={styles.dataRow}>Cargando último registro...</Text>
+            )}
                     
                 </View>
 
